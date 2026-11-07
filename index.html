@@ -8,6 +8,7 @@
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
+        /* Menu Boczne */
         .sidebar { width: 260px; background: #181818; border-right: 1px solid #282828; display: flex; flex-direction: column; padding: 15px; }
         .new-chat-btn { background: #ff9800; color: black; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-bottom: 20px; text-align: center; }
         .new-chat-btn:hover { background: #e68900; }
@@ -16,6 +17,7 @@
         .history-item { background: #222; padding: 10px; border-radius: 5px; font-size: 13px; color: #ccc; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .history-item:hover { background: #2a2a2a; color: white; }
 
+        /* Główny panel czatu */
         .main-content { flex: 1; display: flex; flex-direction: column; background: #121212; }
         .chat-header { padding: 15px 20px; background: #181818; border-bottom: 1px solid #282828; font-size: 16px; font-weight: bold; color: #ff9800; display: flex; justify-content: space-between; align-items: center; }
         .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
@@ -23,6 +25,7 @@
         .user { background: #007acc; color: white; align-self: flex-end; }
         .ai { background: #222; color: #e0e0e0; align-self: flex-start; border: 1px solid #333; }
         
+        /* Dolny pasek wpisywania */
         .input-area { padding: 20px; background: #181818; border-top: 1px solid #282828; display: flex; gap: 10px; }
         input { flex: 1; padding: 14px; border: 1px solid #333; background: #222; color: white; border-radius: 6px; font-size: 15px; outline: none; }
         input:focus { border-color: #ff9800; }
@@ -32,12 +35,14 @@
 </head>
 <body>
 
+    <!-- Menu Boczne -->
     <div class="sidebar">
         <button class="new-chat-btn" onclick="startNewChat()">+ Nowy temat</button>
         <div class="history-title">Historia konwersacji</div>
         <div class="history-list" id="historyList"></div>
     </div>
 
+    <!-- Okno Główne -->
     <div class="main-content">
         <div class="chat-header">
             <span>⚡ Areo AI (Stworzone przez Marcela)</span>
@@ -52,6 +57,7 @@
     </div>
 
     <script>
+        // Tutaj podłączasz darmowe API z chmury (np. Pollinations/Groq/HuggingFace)
         let chatHistory = [];
 
         function startNewChat() {
@@ -70,13 +76,45 @@
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Tworzenie odpowiedzi
-            setTimeout(() => {
-                let response = "Dziękuję za wiadomość! Jestem Areo AI. Kup pełną wersję z obsługą Blendera 3D w moim sklepie za 16 zł!";
-                chatBox.innerHTML += `<div class="message ai">${response}</div>`;
+            chatHistory.push({ role: "user", content: text });
+
+            // Dodaj tymczasową informację o pisaniu
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai';
+            loadingDiv.id = 'loading';
+            loadingDiv.innerText = 'Areo AI pisze...';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                // Połączenie z darmowym serwerem AI w chmurze
+                const response = await fetch("https://text.pollinations.ai/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: "system", content: "Jesteś Areo AI – pomocnym asystentem AI stworzonym przez Marcela. Pomagasz w druku 3D, dobieraniu roślin do doniczek i parametrach druku. Odpowiadaj bezpośrednio, po polsku i zwięźle." },
+                            ...chatHistory
+                        ],
+                        model: "openai"
+                    })
+                });
+
+                const aiText = await response.text();
+                
+                // Usuń wskaźnik ładowania i pokaż odpowiedź AI
+                document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="message ai">${aiText}</div>`;
                 chatBox.scrollTop = chatBox.scrollHeight;
+
+                chatHistory.push({ role: "assistant", content: aiText });
                 updateSidebarHistory(text);
-            }, 600);
+
+            } catch (error) {
+                document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="message ai">Błąd połączenia z serwerem AI: ${error}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         }
 
         function updateSidebarHistory(firstMessage) {
